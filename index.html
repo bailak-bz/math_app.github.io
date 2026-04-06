@@ -1,32 +1,233 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Math Bot - Тренажёр по математике</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>Тест Web App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            color: white;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--tg-theme-button-color, #667eea);
+        }
+        .task-card {
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .task-expression {
+            font-size: 42px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            font-family: monospace;
+        }
+        .answer-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 20px;
+            text-align: center;
+            border: 2px solid var(--tg-theme-button-color, #667eea);
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .button-primary {
+            background: var(--tg-theme-button-color, #667eea);
+            color: white;
+        }
+        .button-secondary {
+            background: var(--tg-theme-secondary-bg-color, #e0e0e0);
+            color: var(--tg-theme-text-color, black);
+        }
+        .feedback {
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>🧮 Тест Web App</h1>
-    <p>Web App работает!</p>
-    <button onclick="sendTest()">Отправить тест боту</button>
-    <button onclick="closeApp()">Закрыть</button>
-    
+    <div class="container">
+        <div class="header">
+            <h1>🧮 Математический тренажёр</h1>
+            <p>Решай примеры и получай очки!</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="score">0</div>
+                <div>Очки</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="level">1</div>
+                <div>Уровень</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="correct">0</div>
+                <div>Правильно</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="accuracy">0%</div>
+                <div>Точность</div>
+            </div>
+        </div>
+
+        <div id="taskContainer">
+            <div class="task-card">
+                <div class="task-expression" id="expression">Загрузка...</div>
+                <input type="number" id="answer" class="answer-input" placeholder="Введи ответ" inputmode="numeric">
+                <button class="button button-primary" onclick="checkAnswer()">✅ Проверить</button>
+                <button class="button button-secondary" onclick="newTask()">🎯 Новый пример</button>
+            </div>
+        </div>
+
+        <div id="feedback"></div>
+
+        <button class="button button-secondary" onclick="getStats()">📊 Статистика</button>
+        <button class="button button-secondary" onclick="getDailyBonus()">🎁 Бонус</button>
+    </div>
+
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
+        tg.MainButton.setText("Проверить");
+        tg.MainButton.onClick(checkAnswer);
         
-        function sendTest() {
-            tg.sendData(JSON.stringify({
-                action: 'test',
-                message: 'Привет от Web App!'
-            }));
-            alert('Данные отправлены боту!');
+        let currentAnswer = null;
+        
+        // Отправляем данные боту
+        function sendToBot(data) {
+            console.log("Отправляем боту:", data);
+            tg.sendData(JSON.stringify(data));
         }
         
-        function closeApp() {
-            tg.close();
+        // Получить новый пример
+        function newTask() {
+            showLoading();
+            sendToBot({ action: 'newTask' });
         }
+        
+        // Проверить ответ
+        function checkAnswer() {
+            let answer = document.getElementById('answer').value;
+            if (!answer) {
+                showFeedback('Введи ответ!', 'error');
+                return;
+            }
+            sendToBot({ 
+                action: 'checkAnswer', 
+                answer: parseFloat(answer) 
+            });
+        }
+        
+        // Получить статистику
+        function getStats() {
+            sendToBot({ action: 'getStats' });
+        }
+        
+        // Получить бонус
+        function getDailyBonus() {
+            sendToBot({ action: 'dailyBonus' });
+        }
+        
+        function showFeedback(message, type) {
+            let feedbackDiv = document.getElementById('feedback');
+            feedbackDiv.innerHTML = `<div class="feedback ${type}">${message}</div>`;
+            setTimeout(() => {
+                feedbackDiv.innerHTML = '';
+            }, 3000);
+        }
+        
+        function showLoading() {
+            document.getElementById('taskContainer').innerHTML = `
+                <div class="task-card">
+                    <div class="loading">⏳ Загрузка примера...</div>
+                </div>
+            `;
+        }
+        
+        function updateTask(expression, answer) {
+            currentAnswer = answer;
+            document.getElementById('taskContainer').innerHTML = `
+                <div class="task-card">
+                    <div class="task-expression">${expression} = ?</div>
+                    <input type="number" id="answer" class="answer-input" placeholder="Введи ответ" inputmode="numeric">
+                    <button class="button button-primary" onclick="checkAnswer()">✅ Проверить</button>
+                    <button class="button button-secondary" onclick="newTask()">🎯 Новый пример</button>
+                </div>
+            `;
+        }
+        
+        function updateStats(score, level, correct, accuracy) {
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('correct').textContent = correct;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+        }
+        
+        // Получаем первый пример при загрузке
+        setTimeout(() => {
+            newTask();
+        }, 500);
     </script>
 </body>
 </html>
