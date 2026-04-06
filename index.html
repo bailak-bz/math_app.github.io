@@ -25,7 +25,6 @@
             margin: 0 auto;
         }
 
-        /* Header */
         .header {
             text-align: center;
             margin-bottom: 30px;
@@ -55,10 +54,6 @@
             transition: transform 0.2s;
         }
 
-        .stat-card:hover {
-            transform: translateY(-2px);
-        }
-
         .stat-value {
             font-size: 28px;
             font-weight: bold;
@@ -71,7 +66,6 @@
             opacity: 0.7;
         }
 
-        /* Task Card */
         .task-card {
             background: var(--tg-theme-secondary-bg-color, #f8f9fa);
             border-radius: 20px;
@@ -100,12 +94,6 @@
             margin-bottom: 15px;
         }
 
-        .answer-input:focus {
-            outline: none;
-            border-color: #764ba2;
-        }
-
-        /* Buttons */
         .button {
             width: 100%;
             padding: 15px;
@@ -123,10 +111,6 @@
             color: var(--tg-theme-button-text-color, white);
         }
 
-        .button-primary:active {
-            transform: scale(0.98);
-        }
-
         .button-secondary {
             background: var(--tg-theme-secondary-bg-color, #e0e0e0);
             color: var(--tg-theme-text-color, black);
@@ -139,7 +123,6 @@
             margin-bottom: 15px;
         }
 
-        /* Feedback */
         .feedback {
             padding: 15px;
             border-radius: 15px;
@@ -171,43 +154,6 @@
             border: 1px solid #f5c6cb;
         }
 
-        /* Settings Panel */
-        .settings-panel {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .settings-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 15px;
-        }
-
-        .theme-buttons, .level-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .theme-btn, .level-btn {
-            padding: 10px;
-            border: 2px solid var(--tg-theme-button-color, #667eea);
-            background: transparent;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
-            color: var(--tg-theme-text-color, black);
-        }
-
-        .theme-btn.active, .level-btn.active {
-            background: var(--tg-theme-button-color, #667eea);
-            color: white;
-        }
-
-        /* Loading */
         .loading {
             text-align: center;
             padding: 40px;
@@ -226,17 +172,6 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-
-        /* Responsive */
-        @media (max-width: 480px) {
-            .task-expression {
-                font-size: 36px;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
         }
     </style>
 </head>
@@ -277,30 +212,9 @@
 
         <div id="feedback"></div>
 
-        <div class="settings-panel">
-            <div class="settings-title">📚 Выбери тему</div>
-            <div class="theme-buttons" id="themeButtons">
-                <button class="theme-btn" data-theme="addition">➕ Сложение</button>
-                <button class="theme-btn" data-theme="subtraction">➖ Вычитание</button>
-                <button class="theme-btn" data-theme="multiplication">✖️ Умножение</button>
-                <button class="theme-btn" data-theme="division">➗ Деление</button>
-                <button class="theme-btn" data-theme="equations">🔢 Уравнения</button>
-                <button class="theme-btn" data-theme="fractions">🧮 Дроби</button>
-            </div>
-
-            <div class="settings-title">⭐ Уровень сложности</div>
-            <div class="level-buttons" id="levelButtons">
-                <button class="level-btn" data-level="1">Уровень 1</button>
-                <button class="level-btn" data-level="2">Уровень 2</button>
-                <button class="level-btn" data-level="3">Уровень 3</button>
-            </div>
-        </div>
-
         <div class="grid-buttons">
             <button class="button button-secondary" onclick="getStats()">📊 Статистика</button>
-            <button class="button button-secondary" onclick="getRating()">🏆 Рейтинг</button>
             <button class="button button-secondary" onclick="getDailyBonus()">🎁 Бонус</button>
-            <button class="button button-secondary" onclick="startExam()">📚 Экзамен</button>
         </div>
     </div>
 
@@ -309,95 +223,29 @@
         tg.expand();
         tg.enableClosingConfirmation();
         
-        let currentTask = null;
-        let currentTheme = 'addition';
-        let currentLevel = 1;
-        let examMode = false;
-        let examQuestions = [];
-        let examCurrent = 0;
-        let examCorrect = 0;
-
-        // Инициализация
-        tg.MainButton.setText("Отправить ответ");
-        tg.MainButton.onClick(checkAnswer);
+        let currentAnswer = null;
         
-        // Загрузка данных пользователя
-        loadUserData();
-        
-        // Обработчики кнопок тем
-        document.querySelectorAll('.theme-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentTheme = btn.dataset.theme;
-                saveSettings();
-                newTask();
+        // Отправляем данные боту через Telegram
+        function sendToBot(action, data = {}) {
+            const message = JSON.stringify({
+                action: action,
+                ...data
             });
-        });
-        
-        document.querySelectorAll('.level-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentLevel = parseInt(btn.dataset.level);
-                saveSettings();
-                newTask();
-            });
-        });
-        
-        function loadUserData() {
-            tg.sendData(JSON.stringify({ action: 'getUserData' }));
-            // Ждём ответ от бота
-            window.addEventListener('message', function(event) {
-                if (event.data.type === 'userData') {
-                    updateUI(event.data.data);
-                }
-            });
+            
+            // Отправляем данные боту
+            tg.sendData(message);
+            
+            // Показываем, что данные отправлены
+            console.log('Отправлено боту:', message);
         }
         
-        function updateUI(data) {
-            document.getElementById('score').textContent = data.score || 0;
-            document.getElementById('level').textContent = data.level || 1;
-            document.getElementById('correct').textContent = data.total_correct || 0;
-            
-            let accuracy = data.total_answered > 0 ? 
-                (data.total_correct / data.total_answered * 100).toFixed(1) : 0;
-            document.getElementById('accuracy').textContent = accuracy + '%';
-            
-            currentTheme = data.theme || 'addition';
-            currentLevel = data.level || 1;
-            
-            // Активируем соответствующие кнопки
-            document.querySelectorAll('.theme-btn').forEach(btn => {
-                if (btn.dataset.theme === currentTheme) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            document.querySelectorAll('.level-btn').forEach(btn => {
-                if (parseInt(btn.dataset.level) === currentLevel) {
-                    btn.classList.add('active');
-                }
-            });
-        }
-        
-        function saveSettings() {
-            tg.sendData(JSON.stringify({
-                action: 'saveSettings',
-                theme: currentTheme,
-                level: currentLevel
-            }));
-        }
-        
-        async function newTask() {
+        // Получаем новый пример
+        function newTask() {
             showLoading();
-            tg.sendData(JSON.stringify({
-                action: 'newTask',
-                theme: currentTheme,
-                level: currentLevel
-            }));
+            sendToBot('newTask');
         }
         
+        // Проверяем ответ
         function checkAnswer() {
             let answer = document.getElementById('answer').value;
             if (!answer) {
@@ -405,36 +253,17 @@
                 return;
             }
             
-            tg.sendData(JSON.stringify({
-                action: 'checkAnswer',
-                answer: parseFloat(answer),
-                examMode: examMode
-            }));
+            sendToBot('checkAnswer', { answer: parseFloat(answer) });
         }
         
+        // Получаем статистику
         function getStats() {
-            tg.sendData(JSON.stringify({ action: 'getStats' }));
+            sendToBot('getStats');
         }
         
-        function getRating() {
-            tg.sendData(JSON.stringify({ action: 'getRating' }));
-        }
-        
+        // Получаем бонус
         function getDailyBonus() {
-            tg.sendData(JSON.stringify({ action: 'dailyBonus' }));
-        }
-        
-        function startExam() {
-            examMode = true;
-            examQuestions = [];
-            examCurrent = 0;
-            examCorrect = 0;
-            
-            tg.sendData(JSON.stringify({
-                action: 'startExam',
-                theme: currentTheme,
-                level: currentLevel
-            }));
+            sendToBot('dailyBonus');
         }
         
         function showFeedback(message, type) {
@@ -455,7 +284,7 @@
         }
         
         function updateTask(expression, answer) {
-            currentTask = answer;
+            currentAnswer = answer;
             document.getElementById('taskContainer').innerHTML = `
                 <div class="task-card">
                     <div class="task-expression" id="expression">${expression} = ?</div>
@@ -466,77 +295,19 @@
             `;
         }
         
-        function updateExam(question, current, total) {
-            document.getElementById('taskContainer').innerHTML = `
-                <div class="task-card">
-                    <div class="task-expression" id="expression">${question} = ?</div>
-                    <div style="margin-bottom: 10px; font-size: 14px;">Вопрос ${current} из ${total}</div>
-                    <input type="number" id="answer" class="answer-input" placeholder="Введи ответ" inputmode="numeric">
-                    <button class="button button-primary" onclick="checkAnswer()">✅ Ответить</button>
-                </div>
-            `;
+        function updateStats(score, level, correct, accuracy) {
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('correct').textContent = correct;
+            document.getElementById('accuracy').textContent = accuracy + '%';
         }
         
-        function showExamResult(correct, total, grade) {
-            examMode = false;
-            let message = `📊 Результаты экзамена:\n✅ Правильно: ${correct}/${total}\n📝 Оценка: ${grade}`;
-            if (correct === total) {
-                message += '\n🏆 ИДЕАЛЬНО! Ты настоящий математик!';
-            }
-            showFeedback(message, correct === total ? 'success' : 'info');
-            loadUserData(); // Обновляем статистику
-        }
-        
-        // Обработка сообщений от бота
-        window.addEventListener('message', function(event) {
-            const data = event.data;
-            
-            switch(data.type) {
-                case 'newTask':
-                    updateTask(data.expression, data.answer);
-                    break;
-                    
-                case 'answerResult':
-                    if (data.correct) {
-                        showFeedback('✅ Верно! +1 очко!', 'success');
-                        loadUserData(); // Обновляем статистику
-                        if (!examMode) {
-                            newTask(); // Новый пример
-                        }
-                    } else {
-                        showFeedback(`❌ Неверно! Правильный ответ: ${data.correctAnswer}`, 'error');
-                        document.getElementById('answer').value = '';
-                    }
-                    break;
-                    
-                case 'examQuestion':
-                    updateExam(data.question, data.current, data.total);
-                    break;
-                    
-                case 'examResult':
-                    showExamResult(data.correct, data.total, data.grade);
-                    break;
-                    
-                case 'stats':
-                    showFeedback(data.text, 'info');
-                    break;
-                    
-                case 'rating':
-                    showFeedback(data.text, 'info');
-                    break;
-                    
-                case 'dailyBonus':
-                    showFeedback(data.message, data.success ? 'success' : 'info');
-                    loadUserData();
-                    break;
-                    
-                case 'userData':
-                    updateUI(data.data);
-                    break;
-            }
+        // Обработка ответов от бота
+        tg.onEvent('mainButtonClicked', function() {
+            checkAnswer();
         });
         
-        // Запрашиваем первый пример
+        // Запрашиваем первый пример при загрузке
         setTimeout(() => {
             newTask();
         }, 500);
